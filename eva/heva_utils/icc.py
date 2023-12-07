@@ -107,8 +107,8 @@ def icc(ratings, model='oneway', type='agreement', unit='average', confidence_le
             pvalue = 1 - f.cdf(Fvalue, df1, df2)
 
             # Confidence interval
-            FL = Fvalue / f.ppf(1 - alpha, df1, df2)
-            FU = Fvalue * f.ppf(1 - alpha, df2, df1)
+            FL = Fvalue / f.ppf(1 - alpha, df1, df2 + e)
+            FU = Fvalue * f.ppf(1 - alpha, df2, df1 + e)
             lbound = (FL - 1) / (FL + (n_raters - 1))
             ubound = (FU - 1) / (FU + (n_raters - 1))
 
@@ -153,17 +153,18 @@ def icc(ratings, model='oneway', type='agreement', unit='average', confidence_le
     elif unit == 'average':
         if model == 'oneway':
             # ICC(1,k) One-Way Random, absolute
-            coeff = (MSr - MSw) / MSr
-            Fvalue = MSr / MSw
+            e = 0.00000001
+            coeff = (MSr - MSw) / (MSr + e)
+            Fvalue = MSr / (MSw + e)
             df1 = n_subjects - 1
             df2 = n_subjects * (n_raters - 1)
             pvalue = 1 - f.cdf(Fvalue, df1, df2)
 
             # Confidence interval
-            FL = (MSr / MSw) / f.ppf(1 - alpha, df1, df2)
-            FU = (MSr / MSw) * f.ppf(1 - alpha, df2, df1)
-            lbound = 1 - 1 / FL
-            ubound = 1 - 1 / FU
+            FL = (MSr / MSw + e) / (f.ppf(1 - alpha, df1+e, df2 + e) + e) 
+            FU = (MSr / MSw + e) * (f.ppf(1 - alpha, df2+e, df1 + e) + e)
+            lbound = 1 - 1 / (FL + e)
+            ubound = 1 - 1 / ( FU + e )
 
         elif model == 'twoway':
             if type == 'agreement':

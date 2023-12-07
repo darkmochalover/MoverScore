@@ -25,7 +25,8 @@ device = get_device()
 if os.environ.get('MOVERSCORE_MODEL'):
     model_name = os.environ.get('MOVERSCORE_MODEL')
 else:
-    model_name = 'distilbert-base-uncased'
+    # model_name = 'distilbert-base-uncased'
+    model_name = 'monologg/distilkobert'
 tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=True)
 model = AutoModel.from_pretrained(model_name, output_hidden_states=True, output_attentions=True)
 model.eval()
@@ -71,6 +72,8 @@ def bert_encode(model, x, attention_mask):
         result = model(x, attention_mask = attention_mask)
     if model_name == 'distilbert-base-uncased':
         return result[1] 
+    elif model_name == 'monologg/distilkobert':
+        return result[1]
     else:
         return result[2] 
 
@@ -91,8 +94,6 @@ def collate_idf(arr, tokenize, numericalize, idf_dict,
 
     padded, lens, mask = padding(arr, pad_token, dtype=torch.long)
     padded_idf, _, _ = padding(idf_weights, pad_token, dtype=torch.float)
-    
-    print(device)
     
     padded = padded.to("mps")
     mask = mask.to(device=device)
@@ -127,6 +128,7 @@ def _safe_divide(numerator, denominator):
 def batched_cdist_l2(x1, x2):
     x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)
     x2_norm = x2.pow(2).sum(dim=-1, keepdim=True)
+    
     res = torch.baddbmm(
         x2_norm.transpose(-2, -1),
         x1,
@@ -148,6 +150,7 @@ def word_mover_score(refs, hyps, idf_dict_ref, idf_dict_hyp, stop_words=[], n_gr
         hyp_embedding = hyp_embedding[-1]
         
         batch_size = len(ref_tokens)
+        
         for i in range(batch_size):  
             ref_ids = [k for k, w in enumerate(ref_tokens[i]) 
                                 if w in stop_words or '##' in w 
@@ -161,7 +164,7 @@ def word_mover_score(refs, hyps, idf_dict_ref, idf_dict_hyp, stop_words=[], n_gr
             
             ref_idf[i, ref_ids] = 0
             hyp_idf[i, hyp_ids] = 0
-            
+        
         raw = torch.cat([ref_embedding, hyp_embedding], 1)
                              
         raw.div_(torch.norm(raw, dim=-1).unsqueeze(-1) + 1e-30) 
